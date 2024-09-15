@@ -28,8 +28,8 @@ Create a GUI chat with a user nicknames list, send encrypted messages directly t
 | Threading |  |  |  |
 
 > [!Note]
-> The project inspired by: 
-> [Simple TCP Chat Room in Python](https://www.youtube.com/watch?v=3UOyky9sEQY&t)
-> [Simple GUI Chat in Python](https://www.youtube.com/watch?v=sopNW98CRag&t)
+> The project inspired by:  
+> [Simple TCP Chat Room in Python](https://www.youtube.com/watch?v=3UOyky9sEQY&t)  
+> [Simple GUI Chat in Python](https://www.youtube.com/watch?v=sopNW98CRag&t)  
 
 ---

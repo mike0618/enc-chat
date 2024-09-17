@@ -2,13 +2,14 @@ import socket
 import json
 import threading
 from datetime import datetime
+import rsa
 
-# host = "10.0.0.1"
 host = socket.gethostbyname(socket.gethostname())
 port = 16180
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
 server.listen()
+pub_key, priv_key = rsa.newkeys(1024)
 
 clients = {}
 
@@ -46,8 +47,7 @@ def handle(nickname):
     while True:
         try:
             message = client.recv(1024).decode()
-            if not message or message == "--":
-                client.send("BYE".encode())
+            if not message:
                 close_client(nickname)
                 break
             elif "@" in message and message.split("@")[0] in clients.keys():

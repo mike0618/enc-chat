@@ -6,11 +6,13 @@ from threading import Thread
 import tkinter
 import tkinter.scrolledtext
 from tkinter import simpledialog, messagebox
+import rsa
 
 cwd = path.dirname(path.realpath(__file__))
 msg = tkinter.Tk()
 msg.withdraw()
 nickname = simpledialog.askstring("Nickname", "Enter a nickname", parent=msg)
+pub_key, priv_key = rsa.newkeys(1024)
 
 
 class GUI:
@@ -24,9 +26,7 @@ class GUI:
             self.client.connect((self.host, self.port))
         except socket.timeout:
             print("Timeout")
-            messagebox.showerror(
-                title="Timeout error", message="Check your VPN connection"
-            )
+            messagebox.showerror(title="Timeout error", message="Check your connection")
             _exit(1)
         except ConnectionRefusedError:
             messagebox.showerror(
@@ -35,6 +35,7 @@ class GUI:
             _exit(1)
         self.client.settimeout(None)
         self.user = "All"
+        self.user_key = None
         self.users = {"All": ""}
         self.counts = {"All": 0}
         self.messages = {"All": []}
@@ -73,7 +74,7 @@ class GUI:
         self.input_area.config(font=("Arial", 12), width=55)
         self.input_area.grid(row=4, column=0, sticky="we")
         self.input_area.focus()
-        self.input_area.bind("<Shift-Return>", self.key_handler)
+        self.input_area.bind("<Shift-Return>", lambda event: self.get_msg())
 
         self.send_btn = tkinter.Button(self.win, text="✉", command=self.get_msg)
         self.send_btn.config(font=("Arial", 32), bg="lightgreen")
@@ -116,8 +117,6 @@ class GUI:
                 return False
             if message == "NICK":
                 self.client.send(nickname.encode())
-            elif message == "BYE":
-                return True
             elif message.startswith("{"):
                 self.users = {"All": ""}
                 self.users.update(json.loads(message))
@@ -180,9 +179,6 @@ class GUI:
         self.text_area.insert("end", msg)
         self.text_area.yview("end")
         self.text_area.config(state="disabled")
-
-    def key_handler(self, event):
-        self.get_msg()
 
     def get_msg(self):
         msg = self.input_area.get("1.0", "end").strip()

@@ -15,7 +15,7 @@ Create a GUI chat with a user nicknames list, send encrypted messages directly t
 
 - [x] Create a server script handling user nicknames and sending messages.
 - [x] Create a client script with GUI
-- [ ] Add async encryption for direct messages
+- [ ] Add async encryption for direct messages - *in progress...*
 - [ ] Add DB support and user registration
 - [ ] Add Server selection for clients and VPN support
 

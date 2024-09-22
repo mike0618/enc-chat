@@ -3,7 +3,7 @@ from pickle import dumps
 import threading
 from datetime import datetime
 from time import sleep
-from rsa import newkeys
+from rsa import DecryptionError, newkeys
 from mycrypt import rsa_decr, rsa_enc
 
 host = socket.gethostbyname(socket.gethostname())
@@ -47,8 +47,8 @@ def get_data(client):
         return data
     except ConnectionResetError as e:
         print(e)
-    # except:
-    #     print("Something went wrong")
+    except DecryptionError:
+        print(f"DecryptionError: {client}")
 
 
 def handle(nickname):
@@ -65,43 +65,11 @@ def handle(nickname):
                 broadcast({"sender": nickname, "content": data["content"]})
             case "personal":
                 dest = clients[data["dest"]]
-                dest[0].send(
-                    message(
-                        {"sender": nickname, "content": data["content"]},
-                        dest[1],
-                        "personal",
-                    )
-                )
+                msg = {"sender": nickname, "content": data["content"]}
+                dest[0].send(message(msg, dest[1], "personal"))
             case "bye":
                 close_client(nickname)
                 break
-        # try:
-        #     message = client.recv(1024).decode()
-        #     if not message:
-        #         close_client(nickname)
-        #         break
-        #     elif "@" in message and message.split("@")[0] in clients.keys():
-        #         msg_data = message.split("@")
-        #         receiver = clients.get(msg_data[0])
-        #         if not receiver:
-        #             continue
-        #         msg = f"@{msg_data[0]}:{nickname}: {msg_data[1]}\n".encode()
-        #         receiver.send(msg)
-        #         client.send(msg)
-        #     elif message.startswith("/"):
-        #         msg_data = message.split("@")
-        #         if len(msg_data) < 2:
-        #             continue
-        #         receiver = clients.get(msg_data[1])
-        #         if not receiver:
-        #             continue
-        #         receiver.send(f"{msg_data[0]}@{nickname}".encode())
-        #     else:
-        #         message = f"{nickname}: {message}\n"
-        #         broadcast(message.encode())
-        # except:
-        #     close_client(nickname)
-        #     break
 
 
 def receive():
@@ -128,7 +96,6 @@ def receive():
         broadcast({"sender": "Enc Chat", "content": msg})
         sleep(0.2)
         send_users()
-        print(f"Users list sended to {nickname}")
 
         thread = threading.Thread(target=handle, args=(nickname,))
         thread.start()

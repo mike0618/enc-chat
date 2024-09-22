@@ -137,16 +137,11 @@ class GUI:
             match msg_type:
                 case "NICK":
                     self.server_key = message
-                    self.client.send(
-                        self.message(
-                            {"nickname": nickname, "pub_key": pub_key},
-                            "NICK",
-                        )
-                    )
+                    msg = {"nickname": nickname, "pub_key": pub_key}
+                    self.client.send(self.message(msg, "NICK"))
                 case "users":
                     self.users = {"Public": ""}
                     self.users.update(message)
-                    print(self.users)
                     self.upd_user_lst()
                     if self.user not in self.users:
                         self.user = "Public"
@@ -156,28 +151,14 @@ class GUI:
                 case "personal":
                     msg = rsa_decr(message["content"], priv_key)
                     sender = message["sender"]
-                    # self.add_msg(sender, msg)
-                    # if nickname == sender or self.user == sender:
-                    #     self.write_msg(msg)
-                    # if msg.startswith(f"{nickname}:"):
-                    #     self.input_area.delete("1.0", "end")
+                    msg = f"{sender}: {msg}\n"
+                    self.add_msg(sender, msg)
                 case "public":
-                    print(message)
+                    msg = message["content"]
                     sender = message["sender"]
-                    content = message["content"]
-                    message = f"{sender}: {content}\n"
-                    self.messages["Public"].append(message)
-                    if self.user == "Public":
-                        self.write_msg(message)
-                    else:
-                        self.counts["Public"] += 1
-                        self.upd_user_lst()
-                    if sender == nickname:
-                        self.input_area.delete("1.0", "end")
-                case _:
-                    print(data)
+                    msg = f"{sender}: {msg}\n"
+                    self.add_msg("Public", msg)
             if not data:
-                print("no data: ", data)
                 sleep(1)
 
     def upd_user_lst(self):
@@ -197,19 +178,19 @@ class GUI:
     def add_msg(self, usr, msg):
         self.messages.setdefault(usr, [])
         self.messages[usr].append(msg)
-        if usr != self.user:
+        if usr == self.user:
+            self.text_area.config(state="normal")
+            self.text_area.insert("end", msg)
+            self.text_area.yview("end")
+            self.text_area.config(state="disabled")
+        else:
             self.counts.setdefault(usr, 0)
             self.counts[usr] += 1
             self.upd_user_lst()
 
-    def write_msg(self, msg):
-        self.text_area.config(state="normal")
-        self.text_area.insert("end", msg)
-        self.text_area.yview("end")
-        self.text_area.config(state="disabled")
-
     def send_msg(self):
         msg = self.input_area.get("1.0", "end").strip()
+        self.input_area.delete("1.0", "end")
         if not msg:
             return False
         if self.user == "Public":
@@ -218,6 +199,7 @@ class GUI:
             self.client.send(
                 self.message(msg, "personal", self.users[self.user], self.user)
             )
+            self.add_msg(self.user, f"{nickname}: {msg}\n")
 
     def stop(self):
         self.win.destroy()

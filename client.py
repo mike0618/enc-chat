@@ -1,18 +1,19 @@
 import socket
-import json
+from pickle import loads
 from os import _exit, path
 from time import sleep
 from threading import Thread
 import tkinter
 import tkinter.scrolledtext
 from tkinter import simpledialog, messagebox
-import rsa
+from rsa import DecryptionError, newkeys
+from mycrypt import rsa_enc, rsa_decr
 
 cwd = path.dirname(path.realpath(__file__))
 msg = tkinter.Tk()
 msg.withdraw()
 nickname = simpledialog.askstring("Nickname", "Enter a nickname", parent=msg)
-pub_key, priv_key = rsa.newkeys(1024)
+pub_key, priv_key = newkeys(1024)
 
 
 class GUI:
@@ -34,11 +35,12 @@ class GUI:
             )
             _exit(1)
         self.client.settimeout(None)
-        self.user = "All"
+        self.user = "Public"
         self.user_key = None
-        self.users = {"All": ""}
-        self.counts = {"All": 0}
-        self.messages = {"All": []}
+        self.server_key = pub_key
+        self.users = {"Public": ""}
+        self.counts = {"Public": 0}
+        self.messages = {"Public": []}
 
     def gui_loop(self):
         self.win = tkinter.Tk()
@@ -54,7 +56,9 @@ class GUI:
         self.close_btn.config(font=("Arial", 12), bg="indianred")
         self.close_btn.grid(row=0, column=1, sticky="we")
 
-        self.chat_lbl = tkinter.Label(self.win, text="Chat with All:", bg="lightgray")
+        self.chat_lbl = tkinter.Label(
+            self.win, text="Chat with Public:", bg="lightgray"
+        )
         self.chat_lbl.config(font=("Arial", 12))
         self.chat_lbl.grid(row=1, column=0, sticky="w")
 
@@ -74,9 +78,9 @@ class GUI:
         self.input_area.config(font=("Arial", 12), width=55)
         self.input_area.grid(row=4, column=0, sticky="we")
         self.input_area.focus()
-        self.input_area.bind("<Shift-Return>", lambda event: self.get_msg())
+        self.input_area.bind("<Shift-Return>", lambda event: self.send_msg())
 
-        self.send_btn = tkinter.Button(self.win, text="✉", command=self.get_msg)
+        self.send_btn = tkinter.Button(self.win, text="✉", command=self.send_msg)
         self.send_btn.config(font=("Arial", 32), bg="lightgreen")
         self.send_btn.grid(row=4, column=1, sticky="nsew")
 
@@ -105,52 +109,76 @@ class GUI:
         self.chat_lbl.configure(text=f"Chat with {self.user}:")
         self.user_lst.itemconfig(select[0], fg="white", bg="black")
 
+    def message(self, content, msg_type="public", pubkey=None, dest="public"):
+        if pubkey:
+            content = rsa_enc(content, pubkey)
+        return rsa_enc(
+            {"type": msg_type, "dest": dest, "content": content}, self.server_key
+        )
+
     def receive(self):
         while True:
             try:
-                message = self.client.recv(1024).decode()
+                data = self.client.recv(1024)
             except InterruptedError:
                 print("An error occured!")
                 self.client.close()
-                return False
+                self.stop()
+            try:
+                data = rsa_decr(data, priv_key)
+            except DecryptionError:
+                data = loads(data)
+            except EOFError:
+                self.stop()
+            msg_type = data["type"]
+            message = data["content"]
             if not message or not nickname:
                 return False
-            if message == "NICK":
-                self.client.send(nickname.encode())
-            elif message.startswith("{"):
-                self.users = {"All": ""}
-                self.users.update(json.loads(message))
-                self.upd_user_lst()
-                if self.user not in self.users:
-                    self.user = "All"
-                    self.chat_lbl.config(text="Chat with All")
-                if not self.title_lbl.cget("text"):
-                    self.title_lbl.config(
-                        text=f"Enc Chat: Welcome {nickname}, your IP is {self.users[nickname][0]}"
+            match msg_type:
+                case "NICK":
+                    self.server_key = message
+                    self.client.send(
+                        self.message(
+                            {"nickname": nickname, "pub_key": pub_key},
+                            "NICK",
+                        )
                     )
-            elif message.startswith("@"):
-                msg = message.split(":", 1)[1]
-                receiver = message[1:].split(":", 1)[0]
-                sender = msg.split(":")[0].strip()
-                if nickname == sender:
-                    self.add_msg(receiver, msg)
-                else:
-                    self.add_msg(sender, msg)
-                if nickname == sender or self.user == sender:
-                    self.write_msg(msg)
-                if msg.startswith(f"{nickname}:"):
-                    self.input_area.delete("1.0", "end")
-            elif message.startswith("/"):
-                continue
-            else:
-                self.messages["All"].append(message)
-                if self.user == "All":
-                    self.write_msg(message)
-                else:
-                    self.counts["All"] += 1
+                case "users":
+                    self.users = {"Public": ""}
+                    self.users.update(message)
+                    print(self.users)
                     self.upd_user_lst()
-                if message.startswith(f"{nickname}:"):
-                    self.input_area.delete("1.0", "end")
+                    if self.user not in self.users:
+                        self.user = "Public"
+                        self.chat_lbl.config(text="Chat with Public")
+                    if not self.title_lbl.cget("text"):
+                        self.title_lbl.config(text=f"Enc Chat: Welcome {nickname}")
+                case "personal":
+                    msg = rsa_decr(message["content"], priv_key)
+                    sender = message["sender"]
+                    # self.add_msg(sender, msg)
+                    # if nickname == sender or self.user == sender:
+                    #     self.write_msg(msg)
+                    # if msg.startswith(f"{nickname}:"):
+                    #     self.input_area.delete("1.0", "end")
+                case "public":
+                    print(message)
+                    sender = message["sender"]
+                    content = message["content"]
+                    message = f"{sender}: {content}\n"
+                    self.messages["Public"].append(message)
+                    if self.user == "Public":
+                        self.write_msg(message)
+                    else:
+                        self.counts["Public"] += 1
+                        self.upd_user_lst()
+                    if sender == nickname:
+                        self.input_area.delete("1.0", "end")
+                case _:
+                    print(data)
+            if not data:
+                print("no data: ", data)
+                sleep(1)
 
     def upd_user_lst(self):
         self.user_lst.delete(0, "end")
@@ -180,19 +208,22 @@ class GUI:
         self.text_area.yview("end")
         self.text_area.config(state="disabled")
 
-    def get_msg(self):
+    def send_msg(self):
         msg = self.input_area.get("1.0", "end").strip()
         if not msg:
             return False
-        if self.user != "All":
-            msg = f"{self.user}@{msg}"
-        self.client.send(msg.encode())
+        if self.user == "Public":
+            self.client.send(self.message(msg))
+        else:
+            self.client.send(
+                self.message(msg, "personal", self.users[self.user], self.user)
+            )
 
     def stop(self):
         self.win.destroy()
         self.win.quit()
         if self.client:
-            self.client.send("--".encode())
+            self.client.send(self.message("", "bye"))
             sleep(0.5)
             self.client.close()
         _exit(1)
@@ -208,7 +239,6 @@ def main():
     ):
         sleep(0.01)
     Thread(target=gui.receive).start()
-    print("OK")
 
 
 if __name__ == "__main__" and nickname:

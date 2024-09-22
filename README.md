@@ -2,7 +2,7 @@
 
 ## Project Statement:
 
-Create a GUI chat with a user nicknames list, send encrypted messages directly to users and unencrypted broadcast messages.
+Create a GUI chat with a user nicknames list, send encrypted personal messages not readable on the server, and encrypted broadcast messages.
 
 ## Libraries:
 
@@ -15,7 +15,9 @@ Create a GUI chat with a user nicknames list, send encrypted messages directly t
 
 - [x] Create a server script handling user nicknames and sending messages.
 - [x] Create a client script with GUI
-- [ ] Add async encryption for direct messages - *in progress...*
+- [x] Add async encryption for messages
+- [ ] Make chat fully working locally - *in progress*
+- [ ] Host server part on my or other server, and test clients
 - [ ] Add DB support and user registration
 - [ ] Add Server selection for clients and VPN support
 
@@ -26,6 +28,8 @@ Create a GUI chat with a user nicknames list, send encrypted messages directly t
 | Python | Tkinter | SQLite | RSA |
 | Socket | CustomTkinter | PostgreSQL |  |
 | Threading |  |  |  |
+| Pickle |  |  |  |
+
 
 > [!Note]
 > The project inspired by:  

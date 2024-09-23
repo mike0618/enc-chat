@@ -37,14 +37,13 @@ def close_client(nickname):
     client.close()
     clients.pop(nickname)
     send_users()
-    msg = f"{datetime.now().strftime('%m/%d %H:%M')}: {nickname} left the chat!\n"
+    msg = f"{datetime.now().strftime('%m/%d %H:%M')}: {nickname} left the chat!"
     broadcast({"sender": "Enc Chat", "content": msg})
 
 
 def get_data(client):
     try:
-        data = rsa_decr(client.recv(1024), priv_key)
-        return data
+        return rsa_decr(client.recv(1024), priv_key)
     except ConnectionResetError as e:
         print(e)
     except DecryptionError:
@@ -72,6 +71,16 @@ def handle(nickname):
                 break
 
 
+def get_nick(client):
+    data = get_data(client)
+    if not data or data.get("type") != "NICK":
+        return False, False
+    nickname = data["content"]["nickname"]
+    client_key = data["content"]["pub_key"]
+    print(f"Nickname of the client is {nickname}!")
+    return nickname, client_key
+
+
 def receive():
     nickname = None
     client_key = None
@@ -82,17 +91,17 @@ def receive():
             break
         print(f"Connected with {str(address)}")
         client.send(dumps({"type": "NICK", "content": pub_key}))
-        data = get_data(client)
-        if not data:
+        nickname, client_key = get_nick(client)
+        while nickname in clients:
+            client.send(message("chnick", client_key, "chnick"))
+            nickname, client_key = get_nick(client)
+            if not nickname or not client_key:
+                client.close()
+                break
+        if not nickname or not client_key:
             continue
-        if data["type"] == "NICK":
-            nickname = data["content"]["nickname"]
-            client_key = data["content"]["pub_key"]
-        if not nickname:
-            continue
-        print(f"Nickname of the client is {nickname}!")
         clients[nickname] = (client, client_key)
-        msg = f"{datetime.now().strftime('%m/%d %H:%M')}: {nickname} joined the chat!\n"
+        msg = f"{datetime.now().strftime('%m/%d %H:%M')}: {nickname} joined the chat!"
         broadcast({"sender": "Enc Chat", "content": msg})
         sleep(0.2)
         send_users()

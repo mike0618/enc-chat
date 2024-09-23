@@ -16,4 +16,5 @@ def rsa_decr(bytez: bytes, key):
     for n in range(0, len(bytez), 128):
         part = bytez[n : n + 128]
         result += decrypt(part, key)
-    return pickle.loads(result)
+    if result:
+        return pickle.loads(result)

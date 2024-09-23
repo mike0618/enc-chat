@@ -130,6 +130,8 @@ class GUI:
                 print("An error occured!")
                 self.client.close()
                 self.stop()
+            except ConnectionResetError:
+                self.stop()
             try:
                 data = rsa_decr(data, priv_key)
             except DecryptionError:

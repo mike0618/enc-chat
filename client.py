@@ -14,8 +14,8 @@ pub_key, priv_key = newkeys(1024)
 class GUI:
     def __init__(self) -> None:
         self.nickname = None
-        # self.host = "192.168.1.67"
-        self.host = socket.gethostbyname(socket.gethostname())
+        self.host = "140.228.209.20"
+        # self.host = socket.gethostbyname(socket.gethostname())
         self.port = 16180
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.settimeout(3)

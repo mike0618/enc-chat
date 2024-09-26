@@ -17,7 +17,7 @@ Create a GUI chat with a user nicknames list, send encrypted personal messages n
 - [x] Create a client script with GUI
 - [x] Add async encryption for messages
 - [x] Make the EncChat fully functional locally
-- [x] Host server part on my or other server, and test clients - *in progress*
+- [x] Host server part on my or other server, and test clients
 - [ ] Add DB support
 - [ ] Add user registration and messages history
 - [ ] Add Server selection for clients and VPN support
